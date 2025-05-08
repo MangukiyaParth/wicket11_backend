@@ -1,0 +1,24 @@
+{
+    "version":2,
+    "builds":[
+        {
+            "src":"app.js",
+            "use":"@vercel/node"
+        }
+    ],
+    "routes":[
+        {
+            "src": "/(.*)",
+            "dest": "/app.js"
+        }
+    ],
+    "crons": [{
+        "path": "/holiday-cron",
+        "schedule": "0 0 1 12 *"
+    },
+    {
+        "path": "/timer-cron",
+        "schedule": "29 18 * * *"
+    }],
+    "regions": ["bom1"]
+}
