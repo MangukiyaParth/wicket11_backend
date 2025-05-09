@@ -89,7 +89,7 @@ async function seedPlaystore() {
                 name VARCHAR(255) NOT NULL,
                 owner VARCHAR(255) NOT NULL,
                 service_number VARCHAR(255) NOT NULL,
-                remark VARCHAR(255) NOT NULL,
+                remark VARCHAR(255),
                 status integer DEFAULT 1,
                 entry_date TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
                 update_date TIMESTAMP WITHOUT TIME ZONE DEFAULT null

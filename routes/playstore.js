@@ -7,7 +7,7 @@ const multer = require('multer');
 const upload = multer();
 
 // Get loggedin user detail 
-router.post('/', fetchuser, upload.none(), [body('name', 'Enter a name').exists(),body('owner', 'Enter a owner').exists(),body('service_number', 'Enter a service number').exists()], async (req, res)=>{
+router.post('/', fetchuser, upload.none(), [body('name', 'Enter a name').exists(),body('owner', 'Enter a owner').exists(),body('serviceNumber', 'Enter a service number').exists()], async (req, res)=>{
 
     // Validation error
     const errors = validationResult(req);
@@ -15,13 +15,13 @@ router.post('/', fetchuser, upload.none(), [body('name', 'Enter a name').exists(
         return res.status(400).json({ status: 0, errors: errors.array() });
     }
     try{
-        const { name, owner, service_number, remark, status } = req.body;
+        const { name, owner, serviceNumber, remark, status } = req.body;
         let playstoreData = [];
         playstoreData['name'] = name;
         playstoreData['owner'] = owner;
-        playstoreData['service_number'] = service_number;
+        playstoreData['service_number'] = serviceNumber;
         playstoreData['remark'] = remark;
-        playstoreData['status'] = status;
+        playstoreData['status'] = parseInt(status);
         await dbUtils.insert('tbl_playstore', playstoreData);
         res.json({status: 1, message: "Playstore added successfully."});
     } catch (error){
@@ -31,14 +31,14 @@ router.post('/', fetchuser, upload.none(), [body('name', 'Enter a name').exists(
 
 // Update a playstore 
 router.put('/', fetchuser, upload.none(), [], async (req, res)=>{
-    const {name, owner, service_number, remark, status, id} = req.body;
+    const {name, owner, serviceNumber, remark, status, id} = req.body;
     try {
         let playstoreData = [];
         playstoreData['name'] = name;
         playstoreData['owner'] = owner;
-        playstoreData['service_number'] = service_number;
+        playstoreData['service_number'] = serviceNumber;
         playstoreData['remark'] = remark;
-        playstoreData['status'] = status;
+        playstoreData['status'] = parseInt(status);
         playstoreData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
         dbUtils.update('tbl_playstore',playstoreData, "id='"+id+"'");
 
