@@ -26,6 +26,7 @@ app.use('/api/v1/user', require('./routes/user'));
 app.use('/api/v1/general', require('./routes/general'));
 app.use('/api/v1/adx', require('./routes/adx'));
 app.use('/api/v1/playstore', require('./routes/playstore'));
+app.use('/api/v1/apps', require('./routes/apps'));
 
 // Cron
 app.use('/holiday-cron', require('./cron/holiday'));

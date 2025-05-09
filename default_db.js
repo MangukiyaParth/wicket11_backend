@@ -106,6 +106,40 @@ async function seedPlaystore() {
     }
 }
 
+async function seedApp() {
+    try {
+        // Create the "app" table if it doesn't exist
+        const createTable = await pool.query(`
+            CREATE TABLE IF NOT EXISTS tbl_app (
+                id UUID DEFAULT uuid_generate_v4() PRIMARY KEY UNIQUE,
+                playstore VARCHAR(255),
+                adx VARCHAR(255),
+                name VARCHAR(255) NOT NULL,
+                code VARCHAR(255),
+                package VARCHAR(255),
+                url VARCHAR(255),
+                remark VARCHAR(255),
+                file VARCHAR(255),
+                status integer DEFAULT 1,
+                total_cnt integer DEFAULT 0,
+                yesterday_cnt integer DEFAULT 0,
+                today_cnt integer DEFAULT 0,
+                is_deleted integer DEFAULT 0,
+                entry_date TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+                update_date TIMESTAMP WITHOUT TIME ZONE DEFAULT null
+            );
+        `);
+
+        console.log(`Created "tbl_app" table`);
+        return {
+            createTable
+        };
+    } catch (error) {
+        console.error('Error seeding apps:', error);
+        throw error;
+    }
+}
+
 async function seedNotification() {
     try {
         const createTable = await pool.query(`
@@ -143,6 +177,7 @@ async function main() {
     await seedUsers();
     await seedADX();
     await seedPlaystore();
+    await seedApp();
     await seedNotification();
   
     return;
