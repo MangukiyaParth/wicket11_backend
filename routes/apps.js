@@ -34,9 +34,8 @@ router.post('/', fetchuser, upload.none(), [body('name', 'Enter a name').exists(
 
 // Update a playstore 
 router.put('/', fetchuser, upload.none(), [], async (req, res)=>{
-    const {name, owner, serviceNumber, remark, status, id} = req.body;
+    const { playstore, adx, name, code, package, url, remark, status, id } = req.body;
     try {
-        const { playstore, adx, name, code, package, url, remark, status } = req.body;
         let appData = [];
         appData['playstore'] = playstore;
         appData['adx'] = adx;
@@ -91,7 +90,7 @@ router.get('/', fetchuser, upload.none(), [], async (req, res)=>{
     try{
         const app = await dbUtils.execute(`SELECT *
             FROM tbl_app
-            WHERE status = ${currentStatus} AND name LIKE '${`%${search}%`}'
+            WHERE status = '${currentStatus}' AND name LIKE '${`%${search}%`}'
             ORDER BY ${orderBy}
             LIMIT ${ITEMS_PER_PAGE} OFFSET ${offset}`);
         if(!app){
@@ -123,6 +122,77 @@ router.get('/appbyid', fetchuser, upload.none(), [], async (req, res)=>{
         }
     } catch (error){
         res.status(500).json({ status:status, error: "Internal server error"});
+    }
+});
+
+/*============================================================================================================
+                                                Settings
+============================================================================================================*/
+
+// Update a google 
+router.post('/google', fetchuser, upload.none(), [], async (req, res)=>{
+    const { g1_percentage, g2_percentage, g3_percentage, g1_account, g2_account, g3_account, g1_banner, g2_banner, g3_banner, g1_inter, g2_inter, g3_inter, g1_native, g2_native, g3_native, g1_native2, g2_native2, g3_native2, g1_appopen, g2_appopen, g3_appopen, g1_appid, g2_appid, g3_appid, type, id } = req.body;
+    try {
+        let appData = [];
+        appData['g1_percentage'] = g1_percentage;
+        appData['g2_percentage'] = g2_percentage;
+        appData['g3_percentage'] = g3_percentage;
+        appData['g1_account_name'] = g1_account;
+        appData['g2_account_name'] = g2_account;
+        appData['g3_account_name'] = g3_account;
+        appData['g1_banner'] = g1_banner;
+        appData['g2_banner'] = g2_banner;
+        appData['g3_banner'] = g3_banner;
+        appData['g1_inter'] = g1_inter;
+        appData['g2_inter'] = g2_inter;
+        appData['g3_inter'] = g3_inter;
+        appData['g1_native'] = g1_native;
+        appData['g2_native'] = g2_native;
+        appData['g3_native'] = g3_native;
+        appData['g1_native2'] = g1_native2;
+        appData['g2_native2'] = g2_native2;
+        appData['g3_native2'] = g3_native2;
+        appData['g1_appopen'] = g1_appopen;
+        appData['g2_appopen'] = g2_appopen;
+        appData['g3_appopen'] = g3_appopen;
+        appData['g1_appid'] = g1_appid;
+        appData['g2_appid'] = g2_appid;
+        appData['g3_appid'] = g3_appid;
+
+        const app = await dbUtils.execute_single(`SELECT * FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
+        if(!app){
+            console.log(1);
+            appData['app_id'] = id;
+            appData['type'] = type;
+            dbUtils.insert('tbl_apps_settings',appData);
+        }
+        else 
+        {
+            console.log(2);
+            appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
+            dbUtils.update('tbl_apps_settings',appData, "id='"+app.id+"'");
+        }
+
+        res.json({status:1, message: "User updated successfully."});
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// get Google Data 
+router.get('/google', fetchuser, upload.none(), [], async (req, res)=>{
+    const { type, id } = req.query;
+    try {
+        const app = await dbUtils.execute_single(`SELECT * FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
+        if(!app){
+            return res.status(400).json({status:0, error: "Data not found."})
+        }
+        else 
+        {
+            res.json({ status: 1, res_data: app});
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
     }
 });
 module.exports = router;
