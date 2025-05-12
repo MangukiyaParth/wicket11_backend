@@ -263,5 +263,156 @@ router.get('/adsetting', fetchuser, upload.none(), [], async (req, res)=>{
     }
 });
 
+// Update a othersetting 
+router.post('/othersetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { all_ads, fullscreen, adblock_version, continue_screen, lets_start_screen, age_screen, next_screen, next_inner_screen, contact_screen, start_screen, real_casting_flow, app_stop, additional_fields, is_bifurcate, type, id } = req.body;
+    try {
+        let appData = [];
+        appData['all_ads'] = all_ads;
+        appData['fullscreen'] = fullscreen;
+        appData['adblock_version'] = adblock_version;
+        appData['continue_screen'] = continue_screen;
+        appData['lets_start_screen'] = lets_start_screen;
+        appData['age_screen'] = age_screen;
+        appData['next_screen'] = next_screen;
+        appData['next_inner_screen'] = next_inner_screen;
+        appData['contact_screen'] = contact_screen;
+        appData['start_screen'] = start_screen;
+        appData['real_casting_flow'] = real_casting_flow;
+        appData['app_stop'] = app_stop;
+        appData['additional_fields'] = additional_fields;
+
+        const app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
+        if(!app){
+            appData['app_id'] = id;
+            appData['type'] = type;
+            appData['is_bifurcate'] = is_bifurcate;
+            dbUtils.insert('tbl_app_ad_settings',appData);
+        }
+        else 
+        {
+            appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
+            dbUtils.update('tbl_app_ad_settings',appData, "id='"+app.id+"'");
+        }
+
+        res.json({status:1, message: "User updated successfully."});
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// get othersetting Data 
+router.get('/othersetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { type, id } = req.query;
+    try {
+        let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
+        if(!app){
+            return res.status(400).json({status:0, error: "Data not found."})
+        }
+        else 
+        {
+            res.json({ status: 1, res_data: app});
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// Update a vpnsetting 
+router.post('/vpnsetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { vpn, vpn_dialog, vpn_dialog_open, vpn_country, vpn_url, vpn_carrier_id, is_bifurcate, type, id } = req.body;
+    try {
+        let appData = [];
+        appData['vpn'] = vpn;
+        appData['vpn_dialog'] = vpn_dialog;
+        appData['vpn_dialog_open'] = vpn_dialog_open;
+        appData['vpn_country'] = vpn_country;
+        appData['vpn_url'] = vpn_url;
+        appData['vpn_carrier_id'] = vpn_carrier_id;
+
+        const app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
+        if(!app){
+            appData['app_id'] = id;
+            appData['type'] = type;
+            appData['is_bifurcate'] = is_bifurcate;
+            dbUtils.insert('tbl_app_ad_settings',appData);
+        }
+        else 
+        {
+            appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
+            dbUtils.update('tbl_app_ad_settings',appData, "id='"+app.id+"'");
+        }
+
+        res.json({status:1, message: "User updated successfully."});
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// get vpnsetting Data 
+router.get('/vpnsetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { type, id } = req.query;
+    try {
+        let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
+        if(!app){
+            return res.status(400).json({status:0, error: "Data not found."})
+        }
+        else 
+        {
+            res.json({ status: 1, res_data: app});
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// Update a appremovesetting 
+router.post('/appremovesetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { app_remove_flag, app_version, app_remove_title, app_remove_description, app_remove_url, app_remove_button_name, app_remove_skip_button_name, type, id } = req.body;
+    try {
+        let appData = [];
+        appData['app_remove_flag'] = app_remove_flag;
+        appData['app_version'] = app_version;
+        appData['app_remove_title'] = app_remove_title;
+        appData['app_remove_description'] = app_remove_description;
+        appData['app_remove_url'] = app_remove_url;
+        appData['app_remove_button_name'] = app_remove_button_name;
+        appData['app_remove_skip_button_name'] = app_remove_skip_button_name;
+        
+        const app = await dbUtils.execute_single(`SELECT * FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
+        if(!app){
+            appData['app_id'] = id;
+            appData['type'] = type;
+            dbUtils.insert('tbl_apps_settings',appData);
+        }
+        else 
+        {
+            appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
+            dbUtils.update('tbl_apps_settings',appData, "id='"+app.id+"'");
+        }
+
+        res.json({status:1, message: "User updated successfully."});
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// get appremovesetting Data 
+router.get('/appremovesetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { type, id } = req.query;
+    try {
+        let app = await dbUtils.execute_single(`SELECT app_remove_flag, app_version, app_remove_title, app_remove_description, app_remove_url, app_remove_button_name, app_remove_skip_button_name FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
+        if(!app){
+            return res.status(400).json({status:0, error: "Data not found."})
+        }
+        else 
+        {
+            res.json({ status: 1, res_data: app});
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
 
 module.exports = router;
