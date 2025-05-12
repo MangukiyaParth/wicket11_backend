@@ -161,14 +161,12 @@ router.post('/google', fetchuser, upload.none(), [], async (req, res)=>{
 
         const app = await dbUtils.execute_single(`SELECT * FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
         if(!app){
-            console.log(1);
             appData['app_id'] = id;
             appData['type'] = type;
             dbUtils.insert('tbl_apps_settings',appData);
         }
         else 
         {
-            console.log(2);
             appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
             dbUtils.update('tbl_apps_settings',appData, "id='"+app.id+"'");
         }
@@ -195,4 +193,75 @@ router.get('/google', fetchuser, upload.none(), [], async (req, res)=>{
         res.status(500).json({ status: 0, error: "Internal server error"});
     }
 });
+
+// Update a adsetting 
+router.post('/adsetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { app_color, app_background_color, native_loading, bottom_banner, all_screen_native, list_native, list_native_cnt, exit_dialoge_native, native_btn, native_btn_text, native_background_color, native_text_color, native_button_background_color, native_button_text_color, alternate_with_appopen, inter_loading, inter_interval, back_click_inter, app_open_loading, splash_ads, app_open, is_bifurcate, type, id } = req.body;
+    try {
+        let appData = [];
+        appData['app_color'] = app_color;
+        appData['app_background_color'] = app_background_color;
+        appData['native_loading'] = native_loading;
+        appData['bottom_banner'] = bottom_banner;
+        appData['all_screen_native'] = all_screen_native;
+        appData['list_native'] = list_native;
+        appData['list_native_cnt'] = list_native_cnt;
+        appData['exit_dialoge_native'] = exit_dialoge_native;
+        appData['native_btn'] = native_btn;
+        appData['native_btn_text'] = native_btn_text;
+        appData['native_background_color'] = native_background_color;
+        appData['native_text_color'] = native_text_color;
+        appData['native_button_background_color'] = native_button_background_color;
+        appData['native_button_text_color'] = native_button_text_color;
+        appData['alternate_with_appopen'] = alternate_with_appopen;
+        appData['inter_loading'] = inter_loading;
+        appData['inter_interval'] = inter_interval;
+        appData['back_click_inter'] = back_click_inter;
+        appData['app_open_loading'] = app_open_loading;
+        appData['splash_ads'] = splash_ads;
+        appData['app_open'] = app_open;
+        const app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
+        if(!app){
+            appData['app_id'] = id;
+            appData['type'] = type;
+            appData['is_bifurcate'] = is_bifurcate;
+            dbUtils.insert('tbl_app_ad_settings',appData);
+        }
+        else 
+        {
+            appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
+            dbUtils.update('tbl_app_ad_settings',appData, "id='"+app.id+"'");
+        }
+
+        res.json({status:1, message: "User updated successfully."});
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// get adsetting Data 
+router.get('/adsetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { type, id, is_bifurcate, bifurcate_id } = req.query;
+    try {
+        let app;
+        if(is_bifurcate){
+            app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
+        }
+        else {
+            app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE id = '${bifurcate_id}'`);
+        }
+        
+        if(!app){
+            return res.status(400).json({status:0, error: "Data not found."})
+        }
+        else 
+        {
+            res.json({ status: 1, res_data: app});
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+
 module.exports = router;
