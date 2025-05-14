@@ -282,7 +282,7 @@ router.post('/othersetting', fetchuser, upload.none(), [], async (req, res)=>{
         appData['app_stop'] = app_stop;
         appData['additional_fields'] = additional_fields;
 
-        const app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
+        const app = await dbUtils.execute_single(`SELECT id FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
         if(!app){
             appData['app_id'] = id;
             appData['type'] = type;
@@ -305,7 +305,7 @@ router.post('/othersetting', fetchuser, upload.none(), [], async (req, res)=>{
 router.get('/othersetting', fetchuser, upload.none(), [], async (req, res)=>{
     const { type, id } = req.query;
     try {
-        let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
+        let app = await dbUtils.execute_single(`SELECT all_ads, fullscreen, adblock_version, continue_screen, lets_start_screen, age_screen, next_screen, next_inner_screen, contact_screen, start_screen, real_casting_flow, app_stop, additional_fields FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
         if(!app){
             return res.status(400).json({status:0, error: "Data not found."})
         }
@@ -330,7 +330,7 @@ router.post('/vpnsetting', fetchuser, upload.none(), [], async (req, res)=>{
         appData['vpn_url'] = vpn_url;
         appData['vpn_carrier_id'] = vpn_carrier_id;
 
-        const app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
+        const app = await dbUtils.execute_single(`SELECT id FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = ${is_bifurcate}`);
         if(!app){
             appData['app_id'] = id;
             appData['type'] = type;
@@ -353,7 +353,7 @@ router.post('/vpnsetting', fetchuser, upload.none(), [], async (req, res)=>{
 router.get('/vpnsetting', fetchuser, upload.none(), [], async (req, res)=>{
     const { type, id } = req.query;
     try {
-        let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
+        let app = await dbUtils.execute_single(`SELECT vpn, vpn_dialog, vpn_dialog_open, vpn_country, vpn_url, vpn_carrier_id FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
         if(!app){
             return res.status(400).json({status:0, error: "Data not found."})
         }
@@ -379,7 +379,7 @@ router.post('/appremovesetting', fetchuser, upload.none(), [], async (req, res)=
         appData['app_remove_button_name'] = app_remove_button_name;
         appData['app_remove_skip_button_name'] = app_remove_skip_button_name;
         
-        const app = await dbUtils.execute_single(`SELECT * FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
+        const app = await dbUtils.execute_single(`SELECT id FROM tbl_apps_settings WHERE app_id = '${id}' AND type='${type}'`);
         if(!app){
             appData['app_id'] = id;
             appData['type'] = type;
@@ -408,6 +408,118 @@ router.get('/appremovesetting', fetchuser, upload.none(), [], async (req, res)=>
         else 
         {
             res.json({ status: 1, res_data: app});
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// Update a bifurcatesetting 
+router.post('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { app_color, app_background_color, native_loading, bottom_banner, all_screen_native, list_native, list_native_cnt, exit_dialoge_native, native_btn, native_btn_text, native_background_color, native_text_color, native_button_background_color, native_button_text_color, alternate_with_appopen, inter_loading, inter_interval, back_click_inter, app_open_loading, splash_ads, app_open, 
+        all_ads, fullscreen, adblock_version, continue_screen, lets_start_screen, age_screen, next_screen, next_inner_screen, contact_screen, start_screen, real_casting_flow, app_stop, additional_fields, 
+        vpn, vpn_dialog, vpn_dialog_open, vpn_country, vpn_url, vpn_carrier_id,
+        bifurcate_id, bifurcate_location, type, id } = req.body;
+    try {
+        let appData = [];
+        appData['app_color'] = app_color;
+        appData['app_background_color'] = app_background_color;
+        appData['native_loading'] = native_loading;
+        appData['bottom_banner'] = bottom_banner;
+        appData['all_screen_native'] = all_screen_native;
+        appData['list_native'] = list_native;
+        appData['list_native_cnt'] = list_native_cnt;
+        appData['exit_dialoge_native'] = exit_dialoge_native;
+        appData['native_btn'] = native_btn;
+        appData['native_btn_text'] = native_btn_text;
+        appData['native_background_color'] = native_background_color;
+        appData['native_text_color'] = native_text_color;
+        appData['native_button_background_color'] = native_button_background_color;
+        appData['native_button_text_color'] = native_button_text_color;
+        appData['alternate_with_appopen'] = alternate_with_appopen;
+        appData['inter_loading'] = inter_loading;
+        appData['inter_interval'] = inter_interval;
+        appData['back_click_inter'] = back_click_inter;
+        appData['app_open_loading'] = app_open_loading;
+        appData['splash_ads'] = splash_ads;
+        appData['app_open'] = app_open;
+
+        appData['all_ads'] = all_ads;
+        appData['fullscreen'] = fullscreen;
+        appData['adblock_version'] = adblock_version;
+        appData['continue_screen'] = continue_screen;
+        appData['lets_start_screen'] = lets_start_screen;
+        appData['age_screen'] = age_screen;
+        appData['next_screen'] = next_screen;
+        appData['next_inner_screen'] = next_inner_screen;
+        appData['contact_screen'] = contact_screen;
+        appData['start_screen'] = start_screen;
+        appData['real_casting_flow'] = real_casting_flow;
+        appData['app_stop'] = app_stop;
+        appData['additional_fields'] = additional_fields;
+
+        appData['vpn'] = vpn;
+        appData['vpn_dialog'] = vpn_dialog;
+        appData['vpn_dialog_open'] = vpn_dialog_open;
+        appData['vpn_country'] = vpn_country;
+        appData['vpn_url'] = vpn_url;
+        appData['vpn_carrier_id'] = vpn_carrier_id;
+
+        appData['bifurcate_location'] = bifurcate_location;
+        if(bifurcate_id){
+            appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
+            dbUtils.update('tbl_app_ad_settings',appData, "id='"+bifurcate_id+"'");
+        }
+        else 
+        {
+            appData['app_id'] = id;
+            appData['type'] = type;
+            appData['is_bifurcate'] = 1;
+            dbUtils.insert('tbl_app_ad_settings',appData);
+        }
+
+        res.json({status:1, message: "User updated successfully."});
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// get bifurcatesetting Data 
+router.get('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { type, bifurcate_id, id } = req.query;
+    try {
+        let app3 = await dbUtils.execute(`SELECT id, bifurcate_location FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 1`);
+        if(bifurcate_id){
+            let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE id = '${bifurcate_id}'`);
+            if(!app){
+                return res.status(400).json({status:0, error: "Data not found."})
+            }
+            else 
+            {
+                res.json({ status: 1, res_data: app, res_data3: app3 });
+            }
+        }
+        else {
+            let app2 = await dbUtils.execute_single(`SELECT additional_fields FROM tbl_app_ad_settings WHERE app_id = '${id}' AND type='${type}' AND is_bifurcate = 0`);
+            res.json({ status: 1, res_data2: app2, res_data3: app3 });
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// delete bifurcatesetting Data 
+router.delete('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res)=>{
+    const { id } = req.query;
+    try {
+        let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE id = '${id}'`);
+        if(!app){
+            return res.status(400).json({status:0, error: "Data not found."})
+        }
+        else 
+        {
+            dbUtils.delete('tbl_app_ad_settings', "id='"+id+"'");
+            res.json({ status: 1, res_data: [] });
         }
     } catch (error) {
         res.status(500).json({ status: 0, error: "Internal server error"});

@@ -172,7 +172,7 @@ async function seedAppSetting() {
                 g1_appid VARCHAR(50),
                 g2_appid VARCHAR(50),
                 g3_appid VARCHAR(50),
-                app_remove_flag VARCHAR(10),
+                app_remove_flag VARCHAR(15),
                 app_version VARCHAR(10),
                 app_remove_title VARCHAR(100),
                 app_remove_description VARCHAR(255),
