@@ -5,7 +5,9 @@ var fetchuser = require('../middlewere/fetchuser');
 var dbUtils = require('../helper/index').Db;
 const multer = require('multer');
 const upload = multer();
-
+const { encrypt } = require('../helper/encryption.cjs');
+var jwt = require('jsonwebtoken');
+const JWT_SECRET = process.env.ENCR;
 // Get loggedin user detail 
 router.post('/', fetchuser, upload.none(), [body('name', 'Enter a name').exists()], async (req, res)=>{
 
@@ -466,16 +468,26 @@ router.post('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res)=
         appData['vpn_carrier_id'] = vpn_carrier_id;
 
         appData['bifurcate_location'] = bifurcate_location;
+
+        let main_table_id = bifurcate_id;
         if(bifurcate_id){
             appData['update_date'] = (new Date()).toISOString().replace('T', ' ').replace('Z', '');
             dbUtils.update('tbl_app_ad_settings',appData, "id='"+bifurcate_id+"'");
+            dbUtils.delete('app_ad_setting_locations', "setting_id='"+bifurcate_id+"'");
         }
         else 
         {
             appData['app_id'] = id;
             appData['type'] = type;
             appData['is_bifurcate'] = 1;
-            dbUtils.insert('tbl_app_ad_settings',appData);
+            const main_table_data = await dbUtils.insert('tbl_app_ad_settings',appData, 'id');
+            main_table_id = main_table_data[0].id;
+        }
+
+        const locationValues = bifurcate_location.split(",");
+        if (locationValues.length > 0) {
+            const values = locationValues.map(loc => `('${main_table_id}', '${loc}')`).join(',');
+            await dbUtils.execute(`INSERT INTO app_ad_setting_locations (setting_id, location_value) VALUES ${values}`);
         }
 
         res.json({status:1, message: "User updated successfully."});
@@ -510,8 +522,9 @@ router.get('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res)=>
 
 // delete bifurcatesetting Data 
 router.delete('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res)=>{
-    const { id } = req.query;
+    const { id } = req.body;
     try {
+        console.log(id);
         let app = await dbUtils.execute_single(`SELECT * FROM tbl_app_ad_settings WHERE id = '${id}'`);
         if(!app){
             return res.status(400).json({status:0, error: "Data not found."})
@@ -520,6 +533,334 @@ router.delete('/bifurcatesetting', fetchuser, upload.none(), [], async (req, res
         {
             dbUtils.delete('tbl_app_ad_settings', "id='"+id+"'");
             res.json({ status: 1, res_data: [] });
+        }
+    } catch (error) {
+        res.status(500).json({ status: 0, error: "Internal server error"});
+    }
+});
+
+// post add user Data 
+router.post('/adduser', upload.none(), [], async (req, res)=>{
+    const token = req.header('auth-token');
+    const { package, as, asname, callingCode, city, continent, continentCode, country, countryCode, countryCode3, currency, currentTime, district, hosting, isp, lat, lon, mobile, offset, org, proxy, query, region, regionName, reverse, status, timezone, zip, device_id, retention, installerinfo, installerurl } = req.body;
+    try {
+        let app = await dbUtils.execute_single(`SELECT id FROM tbl_app WHERE package = '${package}'`);
+        let app_id = app.id;
+        const user_as = as;
+
+        let res_data = {};
+        let google = null;
+        let app_remove = null;
+        let other_settings = null;
+        let vpn_settings = null;
+        let ads_settings = null;
+
+        if(app_id){
+            if(user_as != ""){
+                let appData = [];
+                appData['app_id'] = app.id;
+                appData['package'] = package;
+                appData['"as"'] = user_as;
+                appData['asname'] = asname;
+                appData['callingCode'] = callingCode;
+                appData['city'] = city;
+                appData['continent'] = continent;
+                appData['continentCode'] = continentCode;
+                appData['country'] = country;
+                appData['countryCode'] = countryCode;
+                appData['countryCode3'] = countryCode3;
+                appData['currency'] = currency;
+                appData['currentTime'] = currentTime;
+                appData['district'] = district;
+                appData['hosting'] = hosting;
+                appData['isp'] = isp;
+                appData['lat'] = lat;
+                appData['lon'] = lon;
+                appData['mobile'] = mobile;
+                appData['"offset"'] = offset;
+                appData['org'] = org;
+                appData['proxy'] = proxy;
+                appData['query'] = query;
+                appData['region'] = region;
+                appData['regionName'] = regionName;
+                appData['reverse'] = reverse;
+                appData['status'] = status;
+                appData['timezone'] = timezone;
+                appData['zip'] = zip;
+                appData['device_id'] = device_id;
+                appData['retention'] = retention;
+                appData['installerinfo'] = installerinfo;
+                appData['installerurl'] = installerurl;
+                dbUtils.insert('tbl_app_users',appData);
+            }
+
+            const type = installerurl.includes('gclid') ? 2 : 1;
+            let app_setting = await dbUtils.execute_single(`SELECT * FROM tbl_apps_settings WHERE app_id = '${app_id}' AND type = ${type}`);
+            
+            const locationValues = [
+                user_as, asname, callingCode, city, continent, continentCode, country, countryCode, countryCode3, currency, currentTime, district, hosting, isp, lat, lon, mobile, offset, org, proxy, query, region, regionName, reverse, status, timezone, zip, device_id, retention, installerinfo, installerurl
+            ];
+            
+            const filteredLocations = locationValues
+                .filter(loc => loc != null) // Remove null/undefined
+                .filter(loc => loc !== ''); // Remove empty strings
+            const pgArray = `ARRAY[${filteredLocations.map(v => `'${v.replace(/'/g, "''")}'`).join(',')}]::text[]`;
+
+            let bifurcate_setting;
+            if (filteredLocations.length > 0) {
+                bifurcate_setting = await dbUtils.execute_single(
+                    `SELECT DISTINCT s.*
+                    FROM tbl_app_ad_settings s
+                    JOIN app_ad_setting_locations l ON l.setting_id = s.id
+                    WHERE s.app_id = '${app_id}'
+                        AND s.type = ${type}
+                        AND s.is_bifurcate = 1
+                        AND l.location_value = ANY(${pgArray})`
+                );
+            }
+
+            let ad_setting;
+            if(!bifurcate_setting){
+                ad_setting = await dbUtils.execute_single(`SELECT s.* FROM tbl_app_ad_settings s WHERE s.app_id = '${app_id}' AND s.type = ${type} AND s.is_bifurcate = 0`);
+            }
+            else {
+                ad_setting = bifurcate_setting;
+            }
+            
+            if(app_setting){
+                google = {};
+
+                /**************** Google Ads ****************/
+                google['google1'] = null;
+                google['google2'] = null;
+                google['google3'] = null;
+                if(app_setting['g1_percentage'] != "" || 
+                    app_setting['g1_account_name'] != "" || 
+                    app_setting['g1_banner'] != "" || 
+                    app_setting['g1_inter'] != "" || 
+                    app_setting['g1_native'] != "" || 
+                    app_setting['g1_native2'] != "" || 
+                    app_setting['g1_appopen'] != "" ||
+                    app_setting['g1_appid'] != "")
+                {
+                    google['google1'] = {};
+                    google['google1']['percentageOne'] = app_setting['g1_percentage'];
+                    google['google1']['google_account_name'] = app_setting['g1_account_name'];
+                    google['google1']['google_banner'] = app_setting['g1_banner'];
+                    google['google1']['google_inter'] = app_setting['g1_inter'];
+                    google['google1']['google_native'] = app_setting['g1_native'];
+                    google['google1']['google_native2'] = app_setting['g1_native2'];
+                    google['google1']['google_appOpen'] = app_setting['g1_appopen'];
+                    google['google1']['google_appId'] = app_setting['g1_appid'];
+                }
+                if(app_setting['g2_percentage'] != "" || 
+                    app_setting['g2_account_name'] != "" || 
+                    app_setting['g2_banner'] != "" || 
+                    app_setting['g2_inter'] != "" || 
+                    app_setting['g2_native'] != "" || 
+                    app_setting['g2_native2'] != "" || 
+                    app_setting['g2_appopen'] != "" ||
+                    app_setting['g2_appid'] != "")
+                {
+                    google['google2'] = {};
+                    google['google2']['percentageTwo'] = app_setting['g2_percentage'];
+                    google['google2']['google_account_name'] = app_setting['g2_account_name'];
+                    google['google2']['google_banner'] = app_setting['g2_banner'];
+                    google['google2']['google_inter'] = app_setting['g2_inter'];
+                    google['google2']['google_native'] = app_setting['g2_native'];
+                    google['google2']['google_native2'] = app_setting['g2_native2'];
+                    google['google2']['google_appOpen'] = app_setting['g2_appopen'];
+                    google['google2']['google_appId'] = app_setting['g2_appid'];
+                }
+                if(app_setting['g3_account_name'] != "" || 
+                    app_setting['g3_banner'] != "" || 
+                    app_setting['g3_inter'] != "" || 
+                    app_setting['g3_native'] != "" || 
+                    app_setting['g3_native2'] != "" || 
+                    app_setting['g3_appopen'] != "" ||
+                    app_setting['g3_appid'] != "")
+                {
+                    google['google3'] = {};
+                    google['google3']['percentageTwo'] = app_setting['g3_percentage'];
+                    google['google3']['google_account_name'] = app_setting['g3_account_name'];
+                    google['google3']['google_banner'] = app_setting['g3_banner'];
+                    google['google3']['google_inter'] = app_setting['g3_inter'];
+                    google['google3']['google_native'] = app_setting['g3_native'];
+                    google['google3']['google_native2'] = app_setting['g3_native2'];
+                    google['google3']['google_appOpen'] = app_setting['g3_appopen'];
+                    google['google3']['google_appId'] = app_setting['g3_appid'];
+                }
+                
+                /************ App Remove Flag ************/
+                if(app_setting['app_remove_flag'] != "" || 
+                    app_setting['app_version'] != "" || 
+                    app_setting['app_remove_title'] != "" || 
+                    app_setting['app_remove_description'] != "" || 
+                    app_setting['app_remove_url'] != "" || 
+                    app_setting['app_remove_button_name'] != "" ||
+                    app_setting['app_remove_skip_button_name'] != "")
+                {
+                    app_remove = {};
+                    app_remove['app_remove_flag'] = app_setting['app_remove_flag'];
+                    app_remove['version'] = app_setting['app_version'];
+                    app_remove['title'] = app_setting['app_remove_title'];
+                    app_remove['description'] = app_setting['app_remove_description'];
+                    app_remove['url'] = app_setting['app_remove_url'];
+                    app_remove['button_name'] = app_setting['app_remove_button_name'];
+                    app_remove['skip_button_name'] = app_setting['app_remove_skip_button_name'];
+                }
+            }
+
+            /******************************* Ad Setting *******************************/
+            ads_settings = null;
+            if(ad_setting){
+                ads_settings = {};
+                ads_settings['app_color'] = null;
+                if(ad_setting['app_color'] != "" || ad_setting['app_background_color'] != ""){
+                    ads_settings['app_color'] = {};
+                    ads_settings['app_color']['app_color_for_admin'] = ad_setting['app_color'];
+                    ads_settings['app_color']['background_color'] = ad_setting['app_background_color'];
+                }
+
+                ads_settings['native'] = null;
+                if(ad_setting['native_loading'] != "" || 
+                    ad_setting['bottom_banner'] != "" ||
+                    ad_setting['all_screen_native'] != "" ||
+                    ad_setting['list_native'] != "" ||
+                    ad_setting['list_native_cnt'] != "" ||
+                    ad_setting['exit_dialoge_native'] != "" ||
+                    ad_setting['native_btn'] != "")
+                {
+
+                    ads_settings['native'] = {};
+                    ads_settings['native']['native_loading'] = ad_setting['native_loading'];
+                    ads_settings['native']['bottom_banner'] = ad_setting['bottom_banner'];
+                    ads_settings['native']['all_screen_native'] = ad_setting['all_screen_native'];
+                    ads_settings['native']['list_native'] = ad_setting['list_native'];
+                    ads_settings['native']['static_native_count'] = ad_setting['list_native_cnt'];
+                    ads_settings['native']['exit_dialog_native'] = ad_setting['exit_dialoge_native'];
+                    ads_settings['native']['native_button_text'] = (ad_setting['native_btn'] == "default") ? ad_setting['native_btn'] : ad_setting['native_btn_text'];
+                    ads_settings['native']['native_color'] = null;
+
+                    if(ad_setting['native_background_color'] != "" || 
+                        ad_setting['native_text_color'] != "" ||
+                        ad_setting['native_button_background_color'] != "" ||
+                        ad_setting['native_button_text_color'] != "")
+                    {
+
+                        ads_settings['native']['native_color'] = {};
+                        ads_settings['native']['native_color']['background'] = ad_setting['native_background_color'];
+                        ads_settings['native']['native_color']['text'] = ad_setting['native_text_color'];
+                        ads_settings['native']['native_color']['button_background'] = ad_setting['native_button_background_color'];
+                        ads_settings['native']['native_color']['button_text'] = ad_setting['native_button_text_color'];
+                    }
+                }
+
+                ads_settings['inter'] = null;
+                if(ad_setting['inter_interval'] != "" || 
+                    ad_setting['back_click_inter'] != "" ||
+                    ad_setting['inter_loading'] != "" ||
+                    ad_setting['alternate_with_appopen'] != "")
+                {
+                    ads_settings['inter'] = {};
+                    ads_settings['inter']['inter_interval'] = ad_setting['inter_interval'];
+                    ads_settings['inter']['back_click_inter'] = ad_setting['back_click_inter'];
+                    ads_settings['inter']['inter_loading'] = ad_setting['inter_loading'];
+                    ads_settings['inter']['alternate_app'] = ad_setting['alternate_with_appopen'];
+
+                }
+
+                ads_settings['app_open'] = null;
+                if(ad_setting['splash_ads'] != "" || 
+                    ad_setting['app_open'] != "" ||
+                    ad_setting['app_open_loading'] != "")
+                {
+                    ads_settings['app_open'] = {};
+                    ads_settings['app_open']['splash_ads'] = ad_setting['splash_ads'];
+                    ads_settings['app_open']['app_open'] = ad_setting['app_open'];
+                    ads_settings['app_open']['app_open_loading'] = ad_setting['app_open_loading'];
+                }
+
+                /************ Other Settings ************/
+                if(ad_setting['all_ads'] != "" || 
+                    ad_setting['fullscreen'] != "" || 
+                    ad_setting['adblock_version'] != "" || 
+                    ad_setting['continue_screen'] != "" || 
+                    ad_setting['lets_start_screen'] != "" || 
+                    ad_setting['age_screen'] != "" || 
+                    ad_setting['next_screen'] != "" ||
+                    ad_setting['next_inner_screen'] != "" ||
+                    ad_setting['contact_screen'] != "" ||
+                    ad_setting['start_screen'] != "" ||
+                    ad_setting['real_casting_flow'] != "" ||
+                    ad_setting['app_stop'] != "" ||
+                    ad_setting['additional_fields'] != "")
+                {
+                    other_settings = {};
+                    other_settings['allAds'] = ad_setting['all_ads'];
+                    other_settings['screenNavigationFull'] = ad_setting['fullscreen'];
+                    other_settings['versionCodeforAdblock'] = ad_setting['adblock_version'];
+                    other_settings['continueScreen'] = ad_setting['continue_screen'];
+                    other_settings['letStartScreen'] = ad_setting['lets_start_screen'];
+                    other_settings['genderScreen'] = ad_setting['age_screen'];
+                    other_settings['nextScreen'] = ad_setting['next_screen'];
+                    other_settings['nextInnerScreen'] = ad_setting['next_inner_screen'];
+                    other_settings['connectScreen'] = ad_setting['contact_screen'];
+                    other_settings['startScreen'] = ad_setting['start_screen'];
+                    other_settings['castingFlow'] = ad_setting['real_casting_flow'];
+                    other_settings['dialogApp'] = ad_setting['app_stop'];
+                    other_settings['additionalFields'] = JSON.parse(ad_setting['additional_fields']);
+                                    
+                    if(ad_setting['additional_fields'] != "" && ad_setting['additional_fields'] != null && ad_setting['additional_fields'] != []){
+                        const additional_fields = JSON.parse(ad_setting['additional_fields']);
+                        additional_fields.map((af) => {
+                            const field_name = af['field_name'];
+                            const field_value = af['value'];
+                            other_settings[field_name] = field_value;
+                        });
+                    }
+                }
+
+                /************ VPN Settings ************/
+                if(ad_setting['vpn'] != "" || 
+                    ad_setting['vpn_dialog'] != "" || 
+                    ad_setting['vpn_dialog_open'] != "" || 
+                    ad_setting['vpn_country'] != "" || 
+                    ad_setting['vpn_url'] != "" || 
+                    ad_setting['vpn_carrier_id'] != "")
+                {
+                    vpn_settings = {};
+                    vpn_settings['vpn'] = ad_setting['vpn'];
+                    vpn_settings['vpn_dialog'] = ad_setting['vpn_dialog'];
+                    vpn_settings['vpn_dialog_open'] = ad_setting['vpn_dialog_open'];
+                    vpn_settings['vpn_country'] = JSON.parse(ad_setting['vpn_country']);
+                    vpn_settings['vpn_url'] = ad_setting['vpn_url'];
+                    vpn_settings['vpn_carrier_id'] = ad_setting['vpn_carrier_id'];
+                }
+            }
+            res_data['google'] = google;
+            res_data['app_remove'] = app_remove;
+            res_data['ads_settings'] = ads_settings;
+            res_data['other_settings'] = other_settings;
+            res_data['vpn_settings'] = vpn_settings;
+            /*****************************************************************************************/
+            
+
+            let response;
+            if(token){
+                const data = jwt.verify(token, JWT_SECRET);
+                if(data){
+                    response = res_data;
+                }
+            }
+            else {
+                response = encrypt(process.env.ENCR_KEY,process.env.ENCR_IV,JSON.stringify(res_data));
+            }
+
+            res.json({status:1, res_data: response, message: "User updated successfully."});
+        }
+        else {
+            res.status(500).json({ status: 0, error: "Sorry! somthing went wrong"});
         }
     } catch (error) {
         res.status(500).json({ status: 0, error: "Internal server error"});

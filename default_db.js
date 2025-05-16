@@ -258,6 +258,82 @@ async function seedAppAdSetting() {
         throw error;
     }
 }
+async function seedAppUsers() {
+    try {
+        // Create the "app" table if it doesn't exist
+        const createTable = await pool.query(`
+            CREATE TABLE IF NOT EXISTS tbl_app_users (
+                id UUID DEFAULT uuid_generate_v4() PRIMARY KEY UNIQUE,
+                app_id uuid,
+                package varchar(150) DEFAULT NULL,
+                "as" varchar(150) DEFAULT NULL,
+                asname varchar(100) DEFAULT NULL,
+                callingCode varchar(10) DEFAULT NULL,
+                city varchar(50) DEFAULT NULL,
+                continent varchar(50) DEFAULT NULL,
+                continentCode varchar(10) DEFAULT NULL,
+                country varchar(50) DEFAULT NULL,
+                countryCode varchar(10) DEFAULT NULL,
+                countryCode3 varchar(10) DEFAULT NULL,
+                currency varchar(10) DEFAULT NULL,
+                currentTime varchar(20) DEFAULT NULL,
+                district varchar(50) DEFAULT NULL,
+                hosting varchar(10) DEFAULT NULL,
+                isp varchar(50) DEFAULT NULL,
+                lat double precision DEFAULT 0,
+                lon double precision DEFAULT 0,
+                mobile varchar(10) DEFAULT NULL,
+                "offset" integer DEFAULT NULL,
+                org varchar(50) DEFAULT NULL,
+                proxy varchar(10) DEFAULT NULL,
+                query varchar(10) DEFAULT NULL,
+                region varchar(10) DEFAULT NULL,
+                regionName varchar(50) DEFAULT NULL,
+                reverse varchar(50) DEFAULT NULL,
+                status varchar(20) DEFAULT NULL,
+                timezone varchar(20) DEFAULT NULL,
+                zip varchar(10) DEFAULT NULL,
+                device_id varchar(20) DEFAULT NULL,
+                retention varchar(10) DEFAULT NULL,
+                installerinfo varchar(10) DEFAULT NULL,
+                installerurl varchar(250) DEFAULT NULL,
+                entry_date TIMESTAMP WITHOUT TIME ZONE DEFAULT CURRENT_TIMESTAMP
+            );
+        `);
+        await pool.query(`
+            CREATE TABLE app_ad_setting_locations (
+                id SERIAL PRIMARY KEY,
+                setting_id uuid NOT NULL REFERENCES tbl_app_ad_settings(id),
+                location_value TEXT NOT NULL,
+                created_at TIMESTAMP DEFAULT NOW()
+            );
+        `);
+        await pool.query(`
+            ALTER TABLE app_ad_setting_locations 
+            ADD CONSTRAINT fk_setting
+            FOREIGN KEY (setting_id) 
+            REFERENCES tbl_app_ad_settings(id)
+            ON DELETE CASCADE;
+        `);
+        // For looking up settings by location
+        await pool.query(`CREATE INDEX idx_location_values ON app_ad_setting_locations(location_value);`);
+        
+        // For joining back to settings
+        await pool.query(`CREATE INDEX idx_setting_locations ON app_ad_setting_locations(setting_id);`);
+        
+        // For your frequent package_name + type queries
+        await pool.query(`CREATE INDEX idx_app_settings ON tbl_app_ad_settings(app_id, type, is_bifurcate);`);
+        
+
+        console.log(`Created "tbl_app_users" table`);
+        return {
+            createTable
+            };
+    } catch (error) {
+        console.error('Error seeding apps:', error);
+        throw error;
+    }
+}
 
 async function seedNotification() {
     try {
@@ -298,6 +374,8 @@ async function main() {
     await seedPlaystore();
     await seedApp();
     await seedAppSetting();
+    await seedAppAdSetting();
+    await seedAppUsers();
     await seedNotification();
   
     return;
